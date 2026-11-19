@@ -1,37 +1,118 @@
 # 🤖 Intelligent Web-RAG Agent
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-v0.100%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-v1.25%2B-FF4B4B.svg)](https://streamlit.io/)
-[![GitHub license](https://img.shields.io/github/license/maruthachalams/intelligent-web-rag.svg)](https://github.com/maruthachalams/intelligent-web-rag/blob/main/LICENSE)
+![CI Pipeline](https://github.com/maruthachalams/intelligent-web-rag/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
 
-> A real-time, recursive multi-page Web Crawler and Retrieval-Augmented Generation (RAG) agent that goes beyond searching—it understands. Ingest any landing page or live-updating feed, and the pipeline automatically crawls nested article pages, splits and vectorizes the content into local persistent memory, and answers questions using grounded, citations-linked inference.
-
-This project represents a complete **upgrade from standard web scraping to production-grade MLOps**—bridging the gap between raw data collection and secure, low-latency, contextual AI inference.
+An end-to-end **Web Retrieval-Augmented Generation (RAG)** system engineered with production **MLOps / LLMOps** standards—featuring decoupled API serving, Docker containerization, automated LLM evaluation (Ragas), and GitHub Actions CI/CD.
 
 ---
 
-## 🌟 Features
-
-* **🕸️ Asynchronous Depth-1 Recursive Crawler:** Combines `Requests` and `Headless Selenium` (with automated fallback if blocked) to scrape indices and recursively ingest nested child pages on the fly (perfect for live feeds like Yahoo Finance/News portals).
-* **🧠 Windows-Safe Local Memory (ChromaDB):** Generates semantic vector indices using HuggingFace's `all-MiniLM-L6-v2` embeddings, storing data in local persistent storage. Includes a custom DB-level reset sequence to bypass OS file-locks on Windows (`WinError 32`).
-* **🛰️ Async Gateway (FastAPI):** A high-performance async API orchestrating the ingest, crawl, and query pipelines. Fully integrates with Open-Weight LLMs (using Groq's high-speed developer endpoints like `openai/gpt-oss-20b`).
-* **🎈 Visual Ingest Boundaries (Streamlit):** An interactive UI featuring live chunk-loading diagnostics, balloons, and boundary feedback listing exactly which nested links were safely digested and search-active.
-
----
-
-## 📁 Repository Structure
+## 🏗️ Architecture
 
 ```text
-intelligent-web-rag/
-├── backend/
-│   ├── __init__.py
-│   ├── main.py          # FastAPI Gateway (orchestration & api endpoints)
-│   ├── rag_engine.py    # Embeddings, chunking, and Windows-safe ChromaDB routines
-│   └── scraper.py       # Recursive, same-domain child link and fallback scrapers
-├── frontend/
-│   └── app.py           # Streamlit user interface & diagnostic boundaries
-├── .gitignore           # Prevents committing massive /venv, /chroma_db, and secret env files
-├── .env                 # API Credentials (local setup)
-├── requirements.txt     # Python dependencies
-└── README.md            # You are here!
+[ Streamlit UI ]  ──HTTP──▶  [ FastAPI + Uvicorn (Docker Container) ]
+                                       │
+                  ┌────────────────────┴────────────────────┐
+                  ▼                                         ▼
+        [ Web Scraper ]                           [ RAGEngine ]
+    (Crawl & Chunk Live URLs)              (ChromaDB + all-MiniLM-L6-v2)
+                  │                                         │
+                  └──────────────▶ [ ChromaDB ] ◀───────────┘
+                                       │
+                                       ▼
+                           [ Groq LLM Inference ]
+                            (openai/gpt-oss-20b)
+```
+
+---
+
+## 🚀 MLOps & LLMOps Highlights
+
+* **Decoupled Serving & Containerization:** FastAPI + Uvicorn backend packaged in a lightweight `python:3.12-slim` Docker image, completely separated from the Streamlit frontend.
+* **Automated LLM Evaluation (Ragas):** Evaluates retrieval and generation quality using an LLM-as-a-Judge (`openai/gpt-oss-120b`) instead of manual spot-checks.
+* **CI/CD Quality Gates:** GitHub Actions workflow (`ci.yml`) automatically installs dependencies and runs the `pytest` suite on every push to `main`.
+* **Live Web Ingestion:** Crawls and chunks live web pages on demand, indexing them into a persistent ChromaDB vector store.
+
+---
+
+## 📊 Automated Evaluation Results (Ragas)
+
+Evaluated via `python -m backend.eval_ragas` using `openai/gpt-oss-120b` as the judge model:
+
+| Metric | Score | What It Measures |
+| :--- | :---: | :--- |
+| **Faithfulness** | **0.6667** | Factual consistency of the generated answer against retrieved web context |
+| **Answer Relevance** | **0.6967** | How directly and completely the answer addresses the user's query |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Backend API** | FastAPI, Uvicorn |
+| **Frontend UI** | Streamlit |
+| **Vector Store & Embeddings** | ChromaDB, `all-MiniLM-L6-v2` |
+| **LLM Inference** | Groq (`openai/gpt-oss-20b`) |
+| **LLM Evaluation** | Ragas (`openai/gpt-oss-120b` judge) |
+| **Containerization** | Docker (`python:3.12-slim`) |
+| **Testing & CI/CD** | Pytest, GitHub Actions |
+
+---
+
+## ⚡ Quick Start (Docker + Streamlit)
+
+### 1. Clone & Configure Environment
+
+```bash
+git clone [https://github.com/maruthachalams/intelligent-web-rag.git](https://github.com/maruthachalams/intelligent-web-rag.git)
+cd intelligent-web-rag
+```
+
+Create a `.env` file in the root directory:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 2. Build & Run the FastAPI Backend in Docker
+
+```bash
+docker build -t intelligent-web-rag .
+docker run -d --name rag-backend --env-file .env -p 8000:8000 intelligent-web-rag
+```
+
+Verify the API is live at `http://localhost:8000/docs`.
+
+### 3. Launch the Streamlit Frontend
+
+```bash
+pip install -r requirements.txt
+streamlit run frontend/app.py
+```
+
+---
+
+## 🧪 Running Tests & Evaluation Locally
+
+**Run the Pytest suite:**
+
+```bash
+python -m pytest -v
+```
+
+**Run the Ragas evaluation pipeline:**
+
+```bash
+python -m backend.eval_ragas
+```
+
+---
+
+## 🔧 Engineering Challenges Solved
+
+* **Windows DLL Conflict (`onnxruntime` / `pyarrow`):** Resolved segmentation faults by controlling module import order and pinning `pyarrow<18` for NumPy 2.0+ compatibility.
+* **CI/CD Path & Secret Handling:** Configured `python -m pytest` in GitHub Actions to resolve root module imports and integrated repository secrets for live inference testing.
+* **Ragas Token-Usage Compatibility:** Built a lightweight wrapper around `langchain-groq` to handle nested token-usage aggregation cleanly during automated evaluation runs.
