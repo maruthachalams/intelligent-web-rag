@@ -30,4 +30,4 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'ci-dummy-key' }}
         run: |
-          pytest -v
+          python -m pytest -v
