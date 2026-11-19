@@ -90,42 +90,10 @@ def ask_question(request: QueryRequest):
     3. Prompts LLM and returns the grounded generation
     """
     try:
-        # Perform retrieval
-        matched_chunks = rag.retrieve(request.question, k=4)
-        if not matched_chunks:
-             raise HTTPException(status_code=404, detail="No relevant context found. Please ingest a URL first.")
-        
-        # Build injected context string
-        context_string = "\n\n".join([chunk.page_content for chunk in matched_chunks])
-        source_url = matched_chunks[0].metadata.get("source", current_source["url"])
-        
-        # Strict context grounding prompt (LLM acts purely as search synthesis)
-        system_prompt = (
-            "You are a highly precise, factual QA assistant analyzing the contents of a webpage.\n"
-            "Answer the user's question USING ONLY the provided webpage context. If the correct "
-            "answer cannot be confidently found in the provided fragments, reply with: "
-            "'I'm sorry, but that exact information is not available on the provided webpage.'\n"
-            "Do not fabricate or extrapolate beyond these facts.\n\n"
-            "---------- WEB DATA CONTEXT ----------\n"
-            "{context}\n"
-            "---------------------------------------"
-        )
-        
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "{question}")
-        ])
-        
-        # Construct pipeline & run
-        chain = prompt_template | llm
-        response = chain.invoke({
-            "context": context_string,
-            "question": request.question
-        })
-        
+        answer, source_url = rag.query(request.question)
         return {
-            "answer": response.content,
-            "source": source_url
+            "answer": answer,
+            "source": source_url or current_source["url"]
         }
         
     except FileNotFoundError as fe:
